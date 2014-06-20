@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30501.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureTableUpload", "AzureTableUpload.csproj", "{94A88193-BC80-44F5-96F4-D7C78EF9D4C7}"
+EndProject
+Project("{CC5FD16D-436D-48AD-A40C-5A424C6E3E79}") = "WebUploader", "..\WebUploader\WebUploader.ccproj", "{311A0A24-E6B4-4896-8E7C-35373E928AEE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebRole1", "WebRole1\WebRole1.csproj", "{CFB9D2E0-593F-4F4D-B543-FD1AB53A56EA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{94A88193-BC80-44F5-96F4-D7C78EF9D4C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{94A88193-BC80-44F5-96F4-D7C78EF9D4C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{94A88193-BC80-44F5-96F4-D7C78EF9D4C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{94A88193-BC80-44F5-96F4-D7C78EF9D4C7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{311A0A24-E6B4-4896-8E7C-35373E928AEE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{311A0A24-E6B4-4896-8E7C-35373E928AEE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{311A0A24-E6B4-4896-8E7C-35373E928AEE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{311A0A24-E6B4-4896-8E7C-35373E928AEE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CFB9D2E0-593F-4F4D-B543-FD1AB53A56EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CFB9D2E0-593F-4F4D-B543-FD1AB53A56EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CFB9D2E0-593F-4F4D-B543-FD1AB53A56EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CFB9D2E0-593F-4F4D-B543-FD1AB53A56EA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
