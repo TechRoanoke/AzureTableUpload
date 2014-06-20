@@ -17,9 +17,21 @@ namespace AzureTableUpload
     public enum Mode
     {
         None,
+
+        // Validate the local file, don't do anything. 
         Validate,
+
+        // Upload the file to the server from this local machine. 
+        // This will create a ProgressStatus artifact on the server
         UploadLocal,
+
+        // Queue a message so that we upload from the server. This is much faster for large tables. 
         UploadServer,
+
+        // Reset any ProgressStatus information on the server. 
+        Reset,
+
+        // Print ProgressStauts information from the server.
         Status
     }
 
@@ -30,12 +42,10 @@ namespace AzureTableUpload
         // Where to read the WorkItem from 
         public WorkItem Work;
 
-        public static CommandArgs Parse(string[] args)
+
+        public static void PrintHelp()
         {
-            if (args == null || args.Length == 0)
-            {
-                // Print help
-                Console.WriteLine(
+            Console.WriteLine(
                 @"Tool for uploading an azure table
 TableUpload.exe 
 -validate %filename-csv% %partkey% %rowkey%
@@ -53,11 +63,20 @@ TableUpload.exe
 -status -json %filename-jsonspec% 
     prints the status for the file upload 
 
+-reset -json %filename-jsonspec% 
+    resets progress status state on the server. This can be used to repeat an upload
+
 Other flags:
 -config %filename-config% 
     path to a config file container 
     default is '%this executable%\config.txt'
 ");
+        }
+
+        public static CommandArgs Parse(string[] args)
+        {
+            if (args == null || args.Length == 0)
+            {               
                 return null;
             }
 
@@ -74,6 +93,9 @@ Other flags:
             {
                 switch (args[i])
                 {
+                    case "-reset":
+                        opts.Mode = Mode.Reset;
+                        break;
                     case "-validate":
                         opts.Mode = Mode.Validate;
                         break;
@@ -99,6 +121,11 @@ Other flags:
                         break;
 
                     default:
+                        if (args[i][0] == '-')
+                        {
+                            Log.WriteLine(ConsoleColor.Red, "Unrecognized switch: {0}", args[i]);
+                            return null;
+                        }
                         other.Add(args[i]);
                         break;
                 }
@@ -109,13 +136,17 @@ Other flags:
             switch (opts.Mode)
             {
                 case Mode.None:
-                    Console.WriteLine("Mode is not specified");
-                    Parse(null); // print help
+                    Log.WriteLine(ConsoleColor.Red, "Mode is not specified");
                     return null;
 
                 case Mode.Validate:
                     if (jsonFilename == null)
                     {
+                        if (other.Count < 3)
+                        {
+                            Log.Write(ConsoleColor.Red, "Expected command line to container %filename% %partKey% %rowkey% ");
+                            return null;
+                        }
                         opts.Work = new WorkItem();
                         opts.Work.InputFilename = other[0];
                         opts.Work.PartKeyName = other[1];
@@ -123,11 +154,12 @@ Other flags:
                     }
                     break;
 
+                case Mode.Reset:
                 case Mode.Status:
                     if (jsonFilename == null)
                     {
                         // This is reuqired. 
-                        Console.WriteLine("Error: json filename spec is required for -status");
+                        Log.WriteLine(ConsoleColor.Red, "Error: json filename spec is required for -status and -reset");
                         return null;
                     }
                     break;
@@ -151,6 +183,7 @@ Other flags:
             {
                 if (jsonFilename == null)
                 {
+                    Log.WriteLine(ConsoleColor.Yellow, "No -spec flag specified, input values now to create a spec...");
                     var work = InputWorkFromConsole();
 
                     jsonFilename = Path.Combine(Environment.CurrentDirectory, work.TableName + "-spec.txt");

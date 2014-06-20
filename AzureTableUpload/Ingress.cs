@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -68,6 +69,35 @@ namespace AzureTableUpload
             return d;
         }
 
+        // Decompress (if needed), and mutate the work item to point to the decompressed blob. 
+        static void CloudDecompress(WorkItem work)
+        {
+            if (work.IsCompressed)
+            {
+                // Does the uncompressed blob exist?
+                string csvName = Path.ChangeExtension(work.InputBlobName, ".csv");
+                var csvBlob = work.GetContainer().GetBlockBlobReference(csvName);
+
+                if (!csvBlob.Exists())
+                {
+                    using (var outputStream = csvBlob.OpenWrite())
+                    using (var zip = new ZipArchive(work.OpenStream(), ZipArchiveMode.Read))
+                    {
+                        // Should just be 1 entry 
+                        foreach (var entry in zip.Entries)
+                        {
+                            using (var zipStream = entry.Open())
+                            {
+                                zipStream.CopyTo(outputStream);
+                            }
+                        }
+                    }                
+                }
+                work.InputBlobName = csvName;
+                return;                
+            }
+        }
+
         // Call the table APIs to upload the table.
         // This could be called either locally (slow) or from the cloud (fast)
         // If work.FileName != null, then upload from a local store. Else upload from the blob. 
@@ -77,6 +107,9 @@ namespace AzureTableUpload
         {
             CloudStorageAccount account = CloudStorageAccount.Parse(work.AccountConnectionString);
             Console.WriteLine(@"Begin uploading Table to {0}\{1}", account.Credentials.AccountName, work.TableName);
+
+
+            CloudDecompress(work);
 
             string etag = work.GetETag();
 

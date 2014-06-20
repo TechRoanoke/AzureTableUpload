@@ -29,6 +29,7 @@ namespace AzureTableUpload
         public string InputContainerName { get; set; }
         public string InputBlobName { get; set; }
 
+        // If this ends in .zip, we assume it's compressed and will unzip on the server.
         public string InputFilename { get; set; }
 
         public string GetAccountName()
@@ -127,5 +128,15 @@ namespace AzureTableUpload
             }
             return GetBlob().Properties.ETag;
         }
+
+        [JsonIgnore]
+        // Is the input file compressed?
+        public bool IsCompressed
+        {
+            get
+            {
+                return this.InputBlobName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
+            }
+        }      
     }
 }

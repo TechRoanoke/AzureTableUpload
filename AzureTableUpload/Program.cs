@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,6 +24,7 @@ namespace AzureTableUpload
             CommandArgs opts = CommandArgs.Parse(args);
             if (opts == null)
             {
+                CommandArgs.PrintHelp();
                 return;
             }
 
@@ -47,9 +49,17 @@ namespace AzureTableUpload
                 case Mode.UploadServer:
                     QueueToServer(opts.Work);
                     break;
+
+                case Mode.Reset:
+                    Reset(opts.Work);
+                    break;
+                
+                default:
+                    Log.WriteLine(ConsoleColor.Red, "Unrecognized mode: " + opts.Mode);
+                    break;
             }
         }
-        
+
         // Validate whether a table can be uploaded, without actually uploading it. 
         static void Validate(WorkItem work)
         {
@@ -113,10 +123,51 @@ namespace AzureTableUpload
             }
         }
 
+        // Upload a large file can take an hour. 
+        // CSVs can get a 5x compression, so zip it, and then upload.
+        // Compress the local file, and then mutate the workItem to point to the compressed file instead.
+        private static void Compress(WorkItem workItem)
+        {
+            if (workItem.InputFilename == null)
+            {
+                return;
+            }
+
+            if (!workItem.InputFilename.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            {
+                string zipFilename = Path.ChangeExtension(workItem.InputFilename, ".zip");
+                Console.WriteLine("Compressing input file for upload: {0}", zipFilename);
+
+                using (var outputStream = new FileStream(zipFilename, FileMode.Create))
+                using (var zip = new ZipArchive(outputStream, ZipArchiveMode.Create))
+                {
+                    var entry = zip.CreateEntry(Path.GetFileName(workItem.InputFilename), CompressionLevel.Optimal);
+                    using (var entryStream = entry.Open())
+                    using (var csvStream = File.Open(workItem.InputFilename, FileMode.Open))
+                    {
+                        csvStream.CopyTo(entryStream);
+                    }
+                }
+
+                
+                long lenOriginal = new FileInfo(workItem.InputFilename).Length;
+                long lenCompressed = new FileInfo(zipFilename).Length;
+
+                // update names
+                workItem.InputBlobName = Path.ChangeExtension(workItem.InputBlobName, ".zip");
+                workItem.InputFilename = zipFilename;
+
+                Console.WriteLine("Compression successful. {0} --> {1} bytes. {2}x smaller",
+                    lenOriginal, lenCompressed, lenOriginal / lenCompressed);
+            }
+        }
+
         private static void QueueToServer(WorkItem workItem)
         {
             // Validate locally first. 
             Validate(workItem);
+
+            Compress(workItem);
 
             // Upload the blob (if it's not there yet) 
             var container = workItem.GetContainer();
@@ -127,9 +178,7 @@ namespace AzureTableUpload
                 blob.UploadFromFile(workItem.InputFilename, FileMode.Open);
                 Console.WriteLine("blob upload finished");
             }
-
-            // - zip the blob $$$ 
-            
+           
             // queue a message so the server can process it
             var queue = _config.GetQueue();
 
@@ -143,9 +192,23 @@ namespace AzureTableUpload
             Console.WriteLine("You can see the progress via the -status switch");
         }
 
+        private static void Reset(WorkItem workItem)
+        {
+            PrintStatus(workItem);
+
+            Console.WriteLine();
+            var blob = workItem.GetProgressStatusBlob();
+            if (blob.Exists())
+            {
+                blob.Delete();
+            }
+
+            Console.WriteLine("Status blob is deleted. State about the upload is cleared.");
+        }        
+
         static void PrintStatus(WorkItem item)
         {
-            Console.WriteLine("Status for table upload {0}:{1}", item.GetAccountName(), item.TableName);
+            Console.WriteLine("Status for table upload {2} --> {0}:{1}", item.GetAccountName(), item.TableName, Path.GetFileName(item.InputFilename));
             var info = item.GetProgressStatus();
             if (info == null)
             {
