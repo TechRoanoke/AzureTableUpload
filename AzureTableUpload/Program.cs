@@ -63,6 +63,7 @@ namespace AzureTableUpload
         // Validate whether a table can be uploaded, without actually uploading it. 
         static void Validate(WorkItem work)
         {
+            Console.WriteLine("Validating: {0}", work.InputFilename);
             int i = 0;
 
             int illegal = 0;
@@ -157,7 +158,7 @@ namespace AzureTableUpload
                 workItem.InputBlobName = Path.ChangeExtension(workItem.InputBlobName, ".zip");
                 workItem.InputFilename = zipFilename;
 
-                Console.WriteLine("Compression successful. {0} --> {1} bytes. {2}x smaller",
+                Console.WriteLine("Compression successful. {0:n0} --> {1:n0} bytes. {2}x smaller",
                     lenOriginal, lenCompressed, lenOriginal / lenCompressed);
             }
         }
@@ -174,7 +175,7 @@ namespace AzureTableUpload
             var blob = container.GetBlockBlobReference(workItem.InputBlobName);
             if (!blob.Exists())
             {
-                Console.WriteLine("Uploading the file to a blob ... {0} bytes", workItem.GetInputLength());
+                Console.WriteLine("Uploading the file to a blob ... {0:n0} bytes", workItem.GetInputLength());
                 blob.UploadFromFile(workItem.InputFilename, FileMode.Open);
                 Console.WriteLine("blob upload finished");
             }

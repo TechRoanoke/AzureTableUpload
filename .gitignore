@@ -6,3 +6,7 @@ packages
 csx
 *.user
 *.suo
+
+rcf
+
+*.azurePubxml

@@ -142,15 +142,23 @@ Other flags:
                 case Mode.Validate:
                     if (jsonFilename == null)
                     {
-                        if (other.Count < 3)
-                        {
-                            Log.Write(ConsoleColor.Red, "Expected command line to container %filename% %partKey% %rowkey% ");
-                            return null;
-                        }
                         opts.Work = new WorkItem();
                         opts.Work.InputFilename = other[0];
-                        opts.Work.PartKeyName = other[1];
-                        opts.Work.RowKeyName = other[2];
+
+                        if (other.Count == 1)
+                        {
+                            InputPartitionRowKey(opts.Work);
+                        }
+                        else if (other.Count == 3)
+                        {
+                            opts.Work.PartKeyName = other[1];
+                            opts.Work.RowKeyName = other[2];
+                        }
+                        else
+                        {
+                            Log.WriteLine(ConsoleColor.Red, "Expected command line to container %filename% %partKey% %rowkey% ");
+                            return null;
+                        }
                     }
                     break;
 
@@ -192,7 +200,7 @@ Other flags:
                     string json = JsonConvert.SerializeObject(work, Formatting.Indented);
                     File.WriteAllText(jsonFilename, json);
                     Console.WriteLine("Spec is saved to:");
-                    Console.WriteLine(" {0}", jsonFilename);
+                    Log.WriteLine(ConsoleColor.White, " {0}", jsonFilename);
                     // Save it to file. 
                 }
 
@@ -210,6 +218,45 @@ Other flags:
 
         }
 
+        static void InputPartitionRowKey(WorkItem work)
+        {
+            var partRowKey = InputPartitionRowKey(work.InputFilename);
+            work.PartKeyName = partRowKey.Item1;
+            work.RowKeyName = partRowKey.Item2;
+        }
+
+        static Tuple<string, string> InputPartitionRowKey(string filename)
+        {
+            // Select columns 
+            Console.WriteLine("Here are the column names and first row of data:");
+
+            string[] columnNames;
+            {
+                var dt = DataTable.New.ReadLazy(filename);
+                columnNames = dt.ColumnNames.ToArray();
+
+                var row = dt.Rows.FirstOrDefault();
+                foreach (var columnName in columnNames)
+                {
+                    string value = null;
+                    if (row != null)
+                    {
+                        value = row[columnName];
+                    }
+                    Console.WriteLine("  {0}: {1}", columnName, value);
+                }
+            }
+            Console.WriteLine();
+
+            // $$$ Could make a guess at these...
+            Console.WriteLine("Which column is the Partition key? ");
+            string partKeyName = Console.ReadLine().Trim();
+
+            Console.WriteLine("Which column is the Row key? ");
+            string rowKeyName = Console.ReadLine().Trim();
+
+            return Tuple.Create(partKeyName, rowKeyName);
+        }
 
         static WorkItem InputWorkFromConsole()
         {
@@ -253,39 +300,7 @@ Other flags:
             };
 
             // Select columns 
-            Console.WriteLine("Here are the column names and first row of data:");
-
-            string[] columnNames;
-            using (var stream = work.OpenStream())
-            {
-                var dt = DataTable.New.ReadLazy(stream);
-                columnNames = dt.ColumnNames.ToArray();
-
-                var row = dt.Rows.FirstOrDefault();
-                foreach (var columnName in columnNames)
-                {
-                    string value = null;
-                    if (row != null)
-                    {
-                        value = row[columnName];
-                    }
-                    Console.WriteLine("  {0}: {1}", columnName, value);
-                }
-            }
-            Console.WriteLine();
-
-            // $$$ Could make a guess at these...
-            Console.WriteLine("Which column is the Partition key? ");
-            string partKeyName = Console.ReadLine().Trim();
-
-            Console.WriteLine("Which column is the Row key? ");
-            string rowKeyName = Console.ReadLine().Trim();
-
-            // $$$ Verify they're present
-
-            work.PartKeyName = partKeyName;
-            work.RowKeyName = rowKeyName;
-
+            InputPartitionRowKey(work);            
 
             // Blob to upload to 
             Console.WriteLine("We first copy the file to a blob, and then ingress that to a table.");
